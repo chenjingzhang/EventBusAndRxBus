@@ -1,0 +1,1 @@
+//EventBus.getDefault() 获取EventBus的实例

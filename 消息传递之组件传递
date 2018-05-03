@@ -1,0 +1,84 @@
+http://www.cnblogs.com/whoislcj/p/5593056.html
+需求场景：之前做图片社交App的时候，需要处理一个点赞数据的同步，比如在作品的详情页点赞
+          需要同时更新列表页该作品的点赞数量
+方式一：
+
+通过动态注册BroadcastReceiver
+
+ 1.）内部定义BroadcastReceiver
+   //同步数据广播
+    private BroadcastReceiver dataSynReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals("com.whoislcj.broadcastReceiver.dataSynAction")) {
+                int count = intent.getIntExtra("count", 0);
+                //接下来执行同步操作
+            }
+        }
+    };
+ 2.)在Activity对应的生命周期注册/解注册
+    onCreate/onStart/onResume 注册 onDestroy/onStop/onPause 解注册
+    //同步数据广播
+    private BroadcastReceiver dataSynReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals("com.whoislcj.broadcastReceiver.dataSynAction")) {
+                int count = intent.getIntExtra("count", 0);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        //接下来执行同步操作
+                    }
+                });
+            }
+        }
+    };
+ 解注册
+//解除同步数据广播
+    private void unRegisterReceiver() {
+        unregisterReceiver(dataSynReceiver);
+    }
+3.）在触发数据同步的地方发送消息
+   Intent intent = new Intent();
+   intent.setAction("com.whoislcj.broadcastReceiver.dataSynAction");//设置Action
+   intent.setPackage(getPackageName());//设置包名使广播只能被app内接收者接收
+   intent.putExtra("count", 5);//添加附加信息
+   sendBroadcast(intent);
+
+4.）分析优缺点
+
+   优点：可以设置不同页面接收消息的优秀级，而且也可以采用发送有序广播的方式终止将同步消息
+   发给下一级，同时也可以修改消息传递给下一级。
+
+   缺点：广播传递本身是有安全隐患的，需要设置权限
+  ，每一个Activity都要定义、注册，解注册广播无形中加大了工作量和维护成本。
+
+方式二：通过自己管理事件监听总线
+ 1.）声明一个数据同步接口
+    // 赞同步接口
+    public interface IDataSynListener {
+        void onDataSyn(int count);
+    }
+2.）定义一个单例管理监听总线
+ 优点：相对广播传输安全一点，对于总线数量过大的时候效率可能会比较低。
+ 缺点：不能设置优先级，不能终止传递，不能修改消息。
+
+
+在做项目的时候往往需要应用程序内各组件间、组件与后台线程间的通信
+
+比如耗时操作，等耗时操作完成后通过Handler或Broadcast将结果通知给UI，N个Activity之间需要通过Listener通信
+，其实这些都可以通过EventBus轻松实现，EventBus通过发布/订阅(publish/subscribe)方式来管理事件总线
+EventBus通过注解和反射机制 将订阅者连同订阅函数保存起来，然后在发送订阅的时候 遍历订阅函数数组进行调用
+
+EventBus主要角色:
+
+ Event 传递的事件对象
+ Subscriber  事件的订阅者
+ Publisher  事件的发布者
+ ThreadMode 定义函数在何种线程中执行
+
+EventBus框架也是采用建造者模式设计的
+
+
+
+
